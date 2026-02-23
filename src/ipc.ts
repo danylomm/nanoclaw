@@ -17,6 +17,7 @@ import { RegisteredGroup } from './types.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
+  sendPhoto: (jid: string, filePath: string, caption?: string) => Promise<void>;
   registeredGroups: () => Record<string, RegisteredGroup>;
   registerGroup: (jid: string, group: RegisteredGroup) => void;
   syncGroupMetadata: (force: boolean) => Promise<void>;
@@ -72,13 +73,14 @@ export function startIpcWatcher(deps: IpcDeps): void {
             const filePath = path.join(messagesDir, file);
             try {
               const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              // Authorization: verify this group can send to this chatJid
+              const targetGroup = registeredGroups[data.chatJid];
+              const authorized =
+                isMain ||
+                (targetGroup && targetGroup.folder === sourceGroup);
+
               if (data.type === 'message' && data.chatJid && data.text) {
-                // Authorization: verify this group can send to this chatJid
-                const targetGroup = registeredGroups[data.chatJid];
-                if (
-                  isMain ||
-                  (targetGroup && targetGroup.folder === sourceGroup)
-                ) {
+                if (authorized) {
                   await deps.sendMessage(data.chatJid, data.text);
                   logger.info(
                     { chatJid: data.chatJid, sourceGroup },
@@ -89,6 +91,42 @@ export function startIpcWatcher(deps: IpcDeps): void {
                     { chatJid: data.chatJid, sourceGroup },
                     'Unauthorized IPC message attempt blocked',
                   );
+                }
+              } else if (data.type === 'photo' && data.chatJid && data.filePath) {
+                if (!authorized) {
+                  logger.warn(
+                    { chatJid: data.chatJid, sourceGroup },
+                    'Unauthorized IPC photo attempt blocked',
+                  );
+                } else {
+                  // Resolve host path with traversal guard
+                  const groupIpcDir = path.join(ipcBaseDir, sourceGroup);
+                  const hostFilePath = path.resolve(groupIpcDir, data.filePath);
+                  if (!hostFilePath.startsWith(groupIpcDir + path.sep)) {
+                    logger.warn(
+                      { chatJid: data.chatJid, filePath: data.filePath, sourceGroup },
+                      'IPC photo path traversal attempt blocked',
+                    );
+                  } else if (fs.existsSync(hostFilePath)) {
+                    await deps.sendPhoto(data.chatJid, hostFilePath, data.caption);
+                    logger.info(
+                      { chatJid: data.chatJid, sourceGroup, filePath: data.filePath },
+                      'IPC photo sent',
+                    );
+                    try {
+                      fs.unlinkSync(hostFilePath);
+                    } catch (cleanupErr) {
+                      logger.warn(
+                        { filePath: hostFilePath, err: cleanupErr },
+                        'Failed to clean up sent photo file',
+                      );
+                    }
+                  } else {
+                    logger.warn(
+                      { chatJid: data.chatJid, filePath: hostFilePath, sourceGroup },
+                      'IPC photo file not found',
+                    );
+                  }
                 }
               }
               fs.unlinkSync(filePath);

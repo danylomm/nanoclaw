@@ -1,4 +1,4 @@
-import { Bot } from 'grammy';
+import { Bot, InputFile } from 'grammy';
 
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
 import { logger } from '../logger.js';
@@ -212,6 +212,25 @@ export class TelegramChannel implements Channel {
       logger.info({ jid, length: text.length }, 'Telegram message sent');
     } catch (err) {
       logger.error({ jid, err }, 'Failed to send Telegram message');
+    }
+  }
+
+  async sendPhoto(jid: string, filePath: string, caption?: string): Promise<void> {
+    if (!this.bot) {
+      logger.warn('Telegram bot not initialized');
+      return;
+    }
+
+    try {
+      const numericId = jid.replace(/^tg:/, '');
+      const photo = new InputFile(filePath);
+      await this.bot.api.sendPhoto(numericId, photo, {
+        caption,
+        parse_mode: 'Markdown',
+      });
+      logger.info({ jid, filePath }, 'Telegram photo sent');
+    } catch (err) {
+      logger.error({ jid, filePath, err }, 'Failed to send Telegram photo');
     }
   }
 

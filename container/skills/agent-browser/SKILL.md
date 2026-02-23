@@ -82,6 +82,26 @@ agent-browser screenshot --full   # Full page
 agent-browser pdf output.pdf      # Save as PDF
 ```
 
+### Downloading images (preferred over screenshots)
+
+When you need to get an image from a webpage (e.g., AI-generated images, charts, photos):
+
+1. **Prefer downloading the original image** over taking a screenshot:
+   ```bash
+   # Extract the image URL from the page
+   agent-browser eval "document.querySelector('img.result')?.src"
+
+   # Download the full-resolution image
+   curl -sL "https://example.com/image.png" -o /tmp/image.png
+   ```
+
+2. **Fall back to screenshots** only when downloading isn't possible (e.g., canvas-rendered content, dynamic visualizations):
+   ```bash
+   agent-browser screenshot /tmp/capture.png
+   ```
+
+Downloaded images are higher quality and smaller than screenshots. After downloading, use `send_photo` to send the image to the user.
+
 ### Wait
 
 ```bash

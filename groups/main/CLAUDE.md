@@ -18,6 +18,12 @@ Your output is sent to the user or group.
 
 You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working. This is useful when you want to acknowledge a request before starting longer work.
 
+You also have `mcp__nanoclaw__send_photo` which sends a photo/image to the user. To send a photo:
+1. Download the image (e.g., `curl -sL "url" -o /tmp/image.png`)
+2. Call `send_photo` with the file path and optional caption
+
+When getting images from web pages, prefer downloading the original image URL with `curl` over taking browser screenshots. Supported formats: JPEG, PNG, GIF, WebP (max 10MB).
+
 ### Progress updates
 
 For tasks that take more than a few seconds, send progress updates using `send_message` so the user isn't left waiting in silence. For example:

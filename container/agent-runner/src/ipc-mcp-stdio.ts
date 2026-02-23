@@ -14,6 +14,7 @@ import { CronExpressionParser } from 'cron-parser';
 const IPC_DIR = '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
 const TASKS_DIR = path.join(IPC_DIR, 'tasks');
+const IMAGES_DIR = path.join(IPC_DIR, 'images');
 
 // Context from environment variables (set by the agent runner)
 const chatJid = process.env.NANOCLAW_CHAT_JID!;
@@ -59,6 +60,43 @@ server.tool(
     writeIpcFile(MESSAGES_DIR, data);
 
     return { content: [{ type: 'text' as const, text: 'Message sent.' }] };
+  },
+);
+
+server.tool(
+  'send_photo',
+  "Send a photo/image to the user or group. The file must exist on disk (e.g., downloaded with curl). Supported formats: JPEG, PNG, GIF, WebP. Maximum size: 10MB.",
+  {
+    file_path: z.string().describe('Absolute path to the image file on disk'),
+    caption: z.string().optional().describe('Optional caption text below the photo (supports Markdown)'),
+  },
+  async (args) => {
+    if (!fs.existsSync(args.file_path)) {
+      return {
+        content: [{ type: 'text' as const, text: `File not found: ${args.file_path}` }],
+        isError: true,
+      };
+    }
+
+    // Copy file to IPC images directory so the host can read it
+    fs.mkdirSync(IMAGES_DIR, { recursive: true });
+    const ext = path.extname(args.file_path) || '.png';
+    const imageFilename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+    const ipcImagePath = path.join(IMAGES_DIR, imageFilename);
+    fs.copyFileSync(args.file_path, ipcImagePath);
+
+    const data: Record<string, string | undefined> = {
+      type: 'photo',
+      chatJid,
+      filePath: `images/${imageFilename}`,
+      caption: args.caption || undefined,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    };
+
+    writeIpcFile(MESSAGES_DIR, data);
+
+    return { content: [{ type: 'text' as const, text: `Photo sent: ${imageFilename}` }] };
   },
 );
 
