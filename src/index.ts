@@ -158,6 +158,9 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     'Processing messages',
   );
 
+  // Send immediate acknowledgment so the user knows we're on it
+  await channel.sendMessage(chatJid, '_Working on it..._');
+
   // Track idle timer for closing stdin when agent is idle
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
