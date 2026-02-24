@@ -180,11 +180,42 @@ function buildVolumeMounts(
 }
 
 /**
- * Read allowed secrets from .env for passing to the container via stdin.
+ * Read allowed secrets for passing to the container via stdin.
  * Secrets are never written to disk or mounted as files.
+ *
+ * For OAuth tokens, reads the live token from ~/.claude/.credentials.json
+ * (which gets auto-refreshed by Claude CLI) instead of a stale .env copy.
+ * Falls back to .env for ANTHROPIC_API_KEY or if credentials file is missing.
  */
 function readSecrets(): Record<string, string> {
-  return readEnvFile(['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY']);
+  const secrets: Record<string, string> = {};
+
+  // Try reading the live OAuth token from Claude CLI credentials
+  const credentialsPath = path.join(
+    process.env.HOME || '/home/node',
+    '.claude',
+    '.credentials.json',
+  );
+  try {
+    const creds = JSON.parse(fs.readFileSync(credentialsPath, 'utf-8'));
+    const token = creds?.claudeAiOauth?.accessToken;
+    if (token) {
+      secrets.CLAUDE_CODE_OAUTH_TOKEN = token;
+    }
+  } catch {
+    // Credentials file missing or malformed — fall through to .env
+  }
+
+  // Fall back to .env for OAuth token (if not found above) and API key
+  const envSecrets = readEnvFile(['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY']);
+  if (!secrets.CLAUDE_CODE_OAUTH_TOKEN && envSecrets.CLAUDE_CODE_OAUTH_TOKEN) {
+    secrets.CLAUDE_CODE_OAUTH_TOKEN = envSecrets.CLAUDE_CODE_OAUTH_TOKEN;
+  }
+  if (envSecrets.ANTHROPIC_API_KEY) {
+    secrets.ANTHROPIC_API_KEY = envSecrets.ANTHROPIC_API_KEY;
+  }
+
+  return secrets;
 }
 
 function buildContainerArgs(mounts: VolumeMount[], containerName: string): string[] {
