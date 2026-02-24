@@ -102,6 +102,8 @@ When you need to get an image from a webpage (e.g., AI-generated images, charts,
 
 Downloaded images are higher quality and smaller than screenshots. After downloading, use `send_photo` to send the image to the user.
 
+**IMPORTANT**: Do NOT try to read or view image files — the Claude API cannot process them and will error with "Could not process image". Just download and send them directly via `send_photo`.
+
 ### Wait
 
 ```bash

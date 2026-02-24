@@ -24,6 +24,8 @@ You also have `mcp__nanoclaw__send_photo` which sends a photo/image to the user.
 
 When getting images from web pages, prefer downloading the original image URL with `curl` over taking browser screenshots. Supported formats: JPEG, PNG, GIF, WebP (max 10MB).
 
+**IMPORTANT**: Never try to view, read, or open image files yourself (e.g., with the `Read` tool or `agent-browser screenshot` fed back to you). The Claude API cannot process most images and will error. Instead, just download images and send them directly to the user via `send_photo` without viewing them.
+
 ### Progress updates
 
 For tasks that take more than a few seconds, send progress updates using `send_message` so the user isn't left waiting in silence. For example:
