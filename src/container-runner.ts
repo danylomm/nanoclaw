@@ -206,13 +206,16 @@ function readSecrets(): Record<string, string> {
     // Credentials file missing or malformed — fall through to .env
   }
 
-  // Fall back to .env for OAuth token (if not found above) and API key
-  const envSecrets = readEnvFile(['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY']);
+  // Fall back to .env for OAuth token (if not found above) and other API keys
+  const envSecrets = readEnvFile(['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY', 'NOTION_API_KEY']);
   if (!secrets.CLAUDE_CODE_OAUTH_TOKEN && envSecrets.CLAUDE_CODE_OAUTH_TOKEN) {
     secrets.CLAUDE_CODE_OAUTH_TOKEN = envSecrets.CLAUDE_CODE_OAUTH_TOKEN;
   }
   if (envSecrets.ANTHROPIC_API_KEY) {
     secrets.ANTHROPIC_API_KEY = envSecrets.ANTHROPIC_API_KEY;
+  }
+  if (envSecrets.NOTION_API_KEY) {
+    secrets.NOTION_API_KEY = envSecrets.NOTION_API_KEY;
   }
 
   return secrets;
